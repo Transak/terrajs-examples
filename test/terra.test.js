@@ -95,8 +95,7 @@ const isBSONserializable = (res) => {
 describe("terra-mainet module", () => {
     it("should getBalance", async function () {
         this.timeout(mainTimeout * 3)
-        const result = await terraMainLib.getBalance(testData.toWalletAddress, testData.network, "uusd")
-        console.log(result)
+        const result = await terraMainLib.getBalance(testData.toWalletAddress, testData.network, "uluna")
         expect(typeof result === "number")
     })
 
@@ -123,7 +122,6 @@ describe("terra-mainet module", () => {
             mnemonic,
             denom: testData.crypto,
         })
-        console.log({ result })
 
         const { status, errorMessage } = isBSONserializable(result)
         assert(status, "response of sendTransaction should be BSON serializable : error : " + (errorMessage || ""))
@@ -136,7 +134,6 @@ describe("terra-mainet module", () => {
         this.timeout(mainTimeout * 3)
         const { network } = testData
         const result = await terraMainLib.getTransaction(runtime.transactionHash, network)
-        console.log({ result })
         const { status, errorMessage } = isBSONserializable(result)
         assert(status, "response of getTransaction should be BSON serializable : error : " + (errorMessage || ""))
         let validation_errors = validateTypesAndKeys(result.receipt, keys.getTransaction)
