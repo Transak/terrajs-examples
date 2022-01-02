@@ -2,7 +2,7 @@ const config = require("./config.js")
 const { LCDClient, MnemonicKey, MsgSend, isTxError, Coin } = require("@terra-money/terra.js")
 const { consoleError, _fetchStatusFromLogs, _fetchTrasactionData, _fetchFeeFromTx, _toCrypto, _toDecimal } = require("./utils.js")
 
-const validWallet = /terra1[a-z0-9]{38}/g
+const validWallet = new RegExp(/terra1[a-z0-9]{38}/g)
 const _ = require("lodash")
 
 const _getNetworkDetails = (network) => (network === "main" ? config.networks.main : config.networks.testnet)
@@ -16,11 +16,11 @@ const getTerra = (network) =>
 
 const getTransactionLink = (txId, network) => _getNetworkDetails(network).transactionLink(txId)
 
-const getWalletLink = (txId, network) => _getNetworkDetails(network).walletLink(txId)
+const getWalletLink = (walletAddress, network) => _getNetworkDetails(network).walletLink(walletAddress)
 
 const _getBalance = (address, network) => getTerra(network).bank.balance(address)
 
-const getBalance = async (address, network, denom = "uluna") => {
+const getBalance = async (address, network, denom) => {
     try {
         const balances = await _getBalance(address, network)
         return Number(_toDecimal(balances[0]._coins[denom].amount.toString(), 6))
@@ -36,19 +36,19 @@ const getBalance = async (address, network, denom = "uluna") => {
 // returns Boolean
 const isValidWalletAddress = (address) => validWallet.test(address)
 
-// return number 
-const getNonce = async ({network, mnemonic}) => {
-    return await getTerra(network).wallet(new MnemonicKey({mnemonic})).sequence()
+// return number
+const getNonce = async ({ network, mnemonic }) => {
+    return await getTerra(network).wallet(new MnemonicKey({ mnemonic })).sequence()
 }
- 
+
 // return Object
-const sendTransaction = async ({ to, amount, network, mnemonic, nonce, denom = "uluna" }) => {
+const sendTransaction = async ({ to, amount, network, mnemonic, nonce, denom, decimals = 6 }) => {
     try {
         //Get Provider
         const terra = getTerra(network)
 
         // format amount in base currecy (eg. uluna for LUNA) format
-        const amoutnInCrypto = _toCrypto(amount, 6).toString()
+        const amoutnInCrypto = _toCrypto(amount, decimals).toString()
 
         // get wallet for signing
         const mk = new MnemonicKey({

@@ -23,11 +23,8 @@ const _fetchTrasactionData = (tx) => {
     const { to_address, from_address, amount } = tx.body.messages[0]
     const fee = _fetchFeeFromTx(tx)
     const nonce = _.get(tx, "auth_info.signer_infos")[0].sequence
-    console.log({ to_address, from_address })
-    console.log(amount)
     let value, denom
     for (const coin in amount._coins) {
-        console.log(coin)
         denom = coin
         value = _toDecimal(`${amount._coins[coin].amount}`, 6)
     }
