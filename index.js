@@ -41,6 +41,39 @@ const getNonce = async ({ network, mnemonic }) => {
     return await getTerra(network).wallet(new MnemonicKey({ mnemonic })).sequence()
 }
 
+// return object
+const getNetworkFee = async ({ network, denom, mnemonic, amount, decimals }) => {
+    try {
+        const terra = getTerra(network)
+
+        // for mat amount in base currecy (eg. uluna for LUNA) format
+        const amoutnInCrypto = _toCrypto(amount, decimals).toString()
+
+        // get wallet for signing
+        const mk = new MnemonicKey({
+            mnemonic,
+        })
+        const wallet = terra.wallet(mk)
+
+        // crypto transfer message
+        const send = new MsgSend((from_address = wallet.key.accAddress), (to_address = wallet.key.accAddress), {
+            [denom]: amoutnInCrypto,
+        })
+        // sign transaction
+        const transaction = await wallet.createAndSignTx({
+            msgs: [send],
+        })
+        console.log(_fetchTrasactionData(transaction))
+        return { gasCostCurrency: "LUNA", totalGasCost: Number(_fetchFeeFromTx(transaction)) }
+    } catch (err) {
+        consoleError({
+            message: `Error encountered fetching network fee on ${network} for original error look into extra field`,
+            err,
+        })
+        return false
+    }
+}
+
 // return Object
 const sendTransaction = async ({ to, amount, network, mnemonic, nonce, denom, decimals = 6 }) => {
     try {
@@ -78,6 +111,7 @@ const sendTransaction = async ({ to, amount, network, mnemonic, nonce, denom, de
                 network: _getNetworkDetails(network).networkName,
                 gasPrice: Number((Number(_.get(transaction, "auth_info.fee.amount._coins.uluna.amount", 0)) / sendRes.gas_wanted).toFixed(6)),
                 gasLimit: sendRes.gas_wanted,
+                gasUsed: sendRes.gas_wanted,
                 gasCostInCrypto: Number(_fetchFeeFromTx(transaction)),
                 gasCostCryptoCurrency: "LUNA",
                 amount: amount,
@@ -94,6 +128,7 @@ const sendTransaction = async ({ to, amount, network, mnemonic, nonce, denom, de
         throw err
     }
 }
+
 
 const getTransaction = async (txId, network) => {
     try {
@@ -121,6 +156,7 @@ const getTransaction = async (txId, network) => {
                 network: _getNetworkDetails(network).networkName,
                 gasPrice,
                 gasLimit: txInfo.gas_wanted,
+                gasUsed: txInfo.gas_wanted, // unsused gas is not refunded in terra .
                 gasCostInCrypto: Number(fee),
                 gasCostCryptoCurrency: "LUNA",
                 amount: Number(value),
@@ -148,5 +184,6 @@ module.exports = {
     isValidWalletAddress,
     sendTransaction,
     getBalance,
-    getNonce
+    getNonce,
+    getNetworkFee,
 }
