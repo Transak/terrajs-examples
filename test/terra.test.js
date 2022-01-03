@@ -1,7 +1,9 @@
-const terraMainLib = require('../index');
-const {expect, assert} = require('chai');
+const terraMainLib = require("../index")
+const { expect, assert } = require("chai")
 const bson = require("bson")
+const ethers = require("ethers")
 const _ = require("lodash")
+const { getGasPrice } = require("../utils")
 require("dotenv").config({ path: `${__dirname}/.env` })
 /*
 invalid chain id
@@ -12,7 +14,7 @@ const testData = {
     toWalletAddress: process.env.TOWALLETADDRESS,
     network: process.env.NETWORK,
     mnemonic: process.env.MNEMONIC,
-    crypto: "uusd",
+    crypto: "uluna",
     decimals: 6,
     amount: 0.00005,
 }
@@ -115,23 +117,24 @@ describe("terra-mainet module", () => {
         assert(checkForNumber(nonce), "nonce should be a number type")
     })
 
-    it("should getNetworkFee", async function () {
+    it("should getGasPrice", async function () {
         this.timeout(mainTimeout * 3)
         const { mnemonic, network, crypto, amount, decimals } = testData
-        const { totalGasCost, gasCostCurrency } = await terraMainLib.getNetworkFee({ network, denom: crypto, mnemonic, amount, decimals })
-        assert(checkForNumber(totalGasCost), "totalGasCost should be a number type")
-        assert(gasCostCurrency === "LUNA", "gas cost currency should be LUNA")
+        const gasPrice = await terraMainLib.getGasPrice({ network })
+        assert(checkForNumber(gasPrice), "gasPrice should be a number type")
+        runtime.gasPrice = gasPrice
     })
 
     it("should sendTransaction", async function () {
         this.timeout(mainTimeout * 3)
         const { toWalletAddress: to, mnemonic, network, amount } = testData
-
+        const gasPrice = runtime.gasPrice
         const result = await terraMainLib.sendTransaction({
             to,
             amount,
             network,
             mnemonic,
+            gasPrice,
             denom: testData.crypto,
         })
         const { status, errorMessage } = isBSONserializable(result)
@@ -146,7 +149,6 @@ describe("terra-mainet module", () => {
         const { network } = testData
         const result = await terraMainLib.getTransaction(runtime.transactionHash, network)
         const { status, errorMessage } = isBSONserializable(result)
-        console.log(result)
         assert(status, "response of getTransaction should be BSON serializable : error : " + (errorMessage || ""))
         let validation_errors = validateTypesAndKeys(result.receipt, keys.getTransaction)
         assert(_.isEmpty(validation_errors), "Error validation keys and types \n" + JSON.stringify(validation_errors))
