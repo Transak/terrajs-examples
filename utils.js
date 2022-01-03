@@ -1,6 +1,8 @@
 
 const ethers = require("ethers")
 const _ = require("lodash")
+const fetch = require("isomorphic-fetch")
+const config = require("./config")
 
 const consoleError = ({ message, err, tags }) => {
     const error = new Error(message)
@@ -12,12 +14,32 @@ const consoleError = ({ message, err, tags }) => {
     }
     console.error(error)
 }
+
+// return Coins
+const getGasPrice = async (network) => {
+    let gasPrices
+    try {
+        gasPrices = await (await fetch(_getNetworkDetails(network).gasStation)).json()
+    } catch (err) {
+        consoleError({
+            message: `pricing API ${_getNetworkDetails(network).gasStation} for ${network} is failing see extra for error`,
+            err,
+        })
+        gasPrices = { uluna: "0.15" }
+    }
+    return Number(gasPrices.uluna)
+}
+
+const _getNetworkDetails = (network) => (network === "main" ? config.networks.main : config.networks.testnet)
+
 // returns Number
 const _toDecimal = (amount, decimals) => ethers.utils.formatUnits(amount, decimals)
 // returns ethers.BigNumber
 const _toCrypto = (amount, decimals) => (typeof amount === "string" ? ethers.utils.parseUnits(amount, decimals) : ethers.utils.parseUnits(amount.toString(), decimals))
+
 // return Number
 const _fetchFeeFromTx = (tx) => _toDecimal(`${_.get(tx, "auth_info.fee.amount._coins.uluna.amount", 0)}`, 6)
+
 //return object { to, from, value(inCrypto),denom , fee, nonce }
 const _fetchTrasactionData = (tx) => {
     const { to_address, from_address, amount } = tx.body.messages[0]
@@ -48,6 +70,8 @@ const _fetchStatusFromLogs = (txLogs) => {
 
 module.exports = {
     consoleError,
+    getGasPrice,
+    _getNetworkDetails,
     _fetchStatusFromLogs,
     _fetchTrasactionData,
     _fetchFeeFromTx,

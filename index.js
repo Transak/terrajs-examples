@@ -1,18 +1,17 @@
-const config = require("./config.js")
-const { LCDClient, MnemonicKey, MsgSend, isTxError, Coin } = require("@terra-money/terra.js")
-const { consoleError, _fetchStatusFromLogs, _fetchTrasactionData, _fetchFeeFromTx, _toCrypto, _toDecimal } = require("./utils.js")
+const { LCDClient, MnemonicKey, MsgSend, isTxError, Coin, Coins } = require("@terra-money/terra.js")
+const { consoleError, getGasPrice, _fetchStatusFromLogs, _fetchTrasactionData, _fetchFeeFromTx, _toCrypto, _toDecimal, _getNetworkDetails } = require("./utils.js")
 
-const validWallet = new RegExp(/terra1[a-z0-9]{38}/g)
+const validWallet = /terra1[a-z0-9]{38}/g
 const _ = require("lodash")
 
-const _getNetworkDetails = (network) => (network === "main" ? config.networks.main : config.networks.testnet)
-
-const getTerra = (network) =>
-    new LCDClient({
+const getTerra = (network) => {
+    return new LCDClient({
         URL: _getNetworkDetails(network).provider,
         chainID: _getNetworkDetails(network).networkName,
         gasAdjustment: 1.5,
+        gas: 10000000,
     })
+}
 
 const getTransactionLink = (txId, network) => _getNetworkDetails(network).transactionLink(txId)
 
@@ -34,48 +33,15 @@ const getBalance = async (address, network, denom) => {
 }
 
 // returns Boolean
-const isValidWalletAddress = (address) => validWallet.test(address)
+const isValidWalletAddress = (address) => new RegExp(validWallet).test(address)
 
 // return number
 const getNonce = async ({ network, mnemonic }) => {
     return await getTerra(network).wallet(new MnemonicKey({ mnemonic })).sequence()
 }
 
-// return object
-const getNetworkFee = async ({ network, denom, mnemonic, amount, decimals }) => {
-    try {
-        const terra = getTerra(network)
-
-        // for mat amount in base currecy (eg. uluna for LUNA) format
-        const amoutnInCrypto = _toCrypto(amount, decimals).toString()
-
-        // get wallet for signing
-        const mk = new MnemonicKey({
-            mnemonic,
-        })
-        const wallet = terra.wallet(mk)
-
-        // crypto transfer message
-        const send = new MsgSend((from_address = wallet.key.accAddress), (to_address = wallet.key.accAddress), {
-            [denom]: amoutnInCrypto,
-        })
-        // sign transaction
-        const transaction = await wallet.createAndSignTx({
-            msgs: [send],
-        })
-        console.log(_fetchTrasactionData(transaction))
-        return { gasCostCurrency: "LUNA", totalGasCost: Number(_fetchFeeFromTx(transaction)) }
-    } catch (err) {
-        consoleError({
-            message: `Error encountered fetching network fee on ${network} for original error look into extra field`,
-            err,
-        })
-        return false
-    }
-}
-
 // return Object
-const sendTransaction = async ({ to, amount, network, mnemonic, nonce, denom, decimals = 6 }) => {
+const sendTransaction = async ({ to, amount, network, mnemonic, nonce, denom, gasPrice, decimals = 6 }) => {
     try {
         //Get Provider
         const terra = getTerra(network)
@@ -96,6 +62,7 @@ const sendTransaction = async ({ to, amount, network, mnemonic, nonce, denom, de
         // sign transaction
         const transaction = await wallet.createAndSignTx({
             msgs: [send],
+            gasPrices: [new Coin("uluna", gasPrice || "0.15")],
             ...(nonce ? { nonce } : {}),
         })
         const sendRes = await terra.tx.broadcast(transaction)
@@ -128,7 +95,6 @@ const sendTransaction = async ({ to, amount, network, mnemonic, nonce, denom, de
         throw err
     }
 }
-
 
 const getTransaction = async (txId, network) => {
     try {
@@ -185,5 +151,5 @@ module.exports = {
     sendTransaction,
     getBalance,
     getNonce,
-    getNetworkFee,
+    getGasPrice,
 }
