@@ -12,7 +12,8 @@ const testData = {
     toWalletAddress: process.env.TOWALLETADDRESS,
     network: process.env.NETWORK,
     mnemonic: process.env.MNEMONIC,
-    crypto: "uluna",
+    crypto: "uusd",
+    decimals: 6,
     amount: 0.00005,
 }
 
@@ -28,6 +29,7 @@ const keys = {
         { name: "gasCostCryptoCurrency" },
         { name: "gasCostInCrypto" },
         { name: "gasLimit" },
+        { name: "gasUsed" },
         { name: "gasPrice" },
         { name: "network" },
         { name: "nonce" },
@@ -42,6 +44,7 @@ const keys = {
         { name: "gasCostCryptoCurrency" },
         { name: "gasCostInCrypto" },
         { name: "gasLimit" },
+        { name: "gasUsed" },
         { name: "gasPrice" },
         { name: "network" },
         { name: "nonce" },
@@ -58,6 +61,7 @@ const keyTypeObj = {
     gasCostCryptoCurrency: "string",
     gasCostInCrypto: "number",
     gasLimit: "number",
+    gasUsed: "number",
     gasPrice: "number",
     network: "string",
     nonce: "number",
@@ -111,6 +115,14 @@ describe("terra-mainet module", () => {
         assert(checkForNumber(nonce), "nonce should be a number type")
     })
 
+    it("should getNetworkFee", async function () {
+        this.timeout(mainTimeout * 3)
+        const { mnemonic, network, crypto, amount, decimals } = testData
+        const { totalGasCost, gasCostCurrency } = await terraMainLib.getNetworkFee({ network, denom: crypto, mnemonic, amount, decimals })
+        assert(checkForNumber(totalGasCost), "totalGasCost should be a number type")
+        assert(gasCostCurrency === "LUNA", "gas cost currency should be LUNA")
+    })
+
     it("should sendTransaction", async function () {
         this.timeout(mainTimeout * 3)
         const { toWalletAddress: to, mnemonic, network, amount } = testData
@@ -122,7 +134,6 @@ describe("terra-mainet module", () => {
             mnemonic,
             denom: testData.crypto,
         })
-
         const { status, errorMessage } = isBSONserializable(result)
         assert(status, "response of sendTransaction should be BSON serializable : error : " + (errorMessage || ""))
         let validation_errors = validateTypesAndKeys(result.receipt, keys.sendTransaction)
@@ -135,6 +146,7 @@ describe("terra-mainet module", () => {
         const { network } = testData
         const result = await terraMainLib.getTransaction(runtime.transactionHash, network)
         const { status, errorMessage } = isBSONserializable(result)
+        console.log(result)
         assert(status, "response of getTransaction should be BSON serializable : error : " + (errorMessage || ""))
         let validation_errors = validateTypesAndKeys(result.receipt, keys.getTransaction)
         assert(_.isEmpty(validation_errors), "Error validation keys and types \n" + JSON.stringify(validation_errors))
