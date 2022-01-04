@@ -53,7 +53,7 @@ const keys = {
         { name: "to" },
         { name: "transactionHash" },
         { name: "transactionLink" },
-        { name: "isSuccessful" },
+        { name: "status" },
     ],
 }
 const keyTypeObj = {
@@ -70,7 +70,7 @@ const keyTypeObj = {
     to: "string",
     transactionHash: "string",
     transactionLink: "string",
-    isSuccessful: "boolean",
+    status: "boolean",
 }
 
 const validateTypesAndKeys = (objectToCheck, keysObject) => {
