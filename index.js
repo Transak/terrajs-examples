@@ -99,7 +99,7 @@ const sendTransaction = async ({ to, amount, network, mnemonic, nonce, denom, ga
 const getTransaction = async (txId, network) => {
     try {
         const txInfo = await getTerra(network).tx.txInfo(txId)
-        const isSuccessful = _fetchStatusFromLogs(txInfo.logs)
+        const status = _fetchStatusFromLogs(txInfo.logs)
         const { to, from, value, denom, fee, nonce } = _fetchTrasactionData(txInfo.tx)
         const gasPrice = Number((Number(_toCrypto(fee, 6).toString()) / txInfo.gas_wanted).toFixed(6))
         response = {
@@ -129,8 +129,8 @@ const getTransaction = async (txId, network) => {
                 from,
                 to,
                 nonce,
-                isSuccessful,
-                ...(isSuccessful ? {} : { error: txInfo.raw_log }),
+                status,
+                ...(status ? {} : { error: txInfo.raw_log }),
             },
         }
         return response
