@@ -41,38 +41,38 @@ const _toCrypto = (amount, decimals) => (typeof amount === "string" ? ethers.uti
 const _fetchFeeFromTx = (tx) => _toDecimal(`${_.get(tx, "auth_info.fee.amount._coins.uluna.amount", 0)}`, 6)
 
 //return object { to, from, value(inCrypto),denom , fee, nonce }
-const _fetchTrasactionData = (tx) => {
-    const { to_address, from_address, amount } = tx.body.messages[0]
+const _fetchTrasactionData = (tx, decimals = 6) => {
+    let response
+    const { to_address, from_address, amount, execute_msg, contract, sender } = tx.body.messages[0]
     const fee = _fetchFeeFromTx(tx)
     const nonce = _.get(tx, "auth_info.signer_infos")[0].sequence
-    let value, denom
-    for (const coin in amount._coins) {
-        denom = coin
-        value = _toDecimal(`${amount._coins[coin].amount}`, 6)
+    if (!contract) {
+        let value, denom
+        for (const coin in amount._coins) {
+            denom = coin
+            value = _toDecimal(`${amount._coins[coin].amount}`, decimals)
+        }
+        response = {
+            to: to_address,
+            from: from_address,
+            value,
+            denom,
+        }
+    } else {
+        response = {
+            to: sender,
+            from: _.get(execute_msg, "transfer.recipient"),
+            value: _toDecimal(_.get(execute_msg, "transfer.amount"), decimals),
+        }
     }
-    return {
-        to: to_address,
-        from: from_address,
-        value,
-        denom,
-        fee,
-        nonce,
-    }
-}
-// fetch status from trasnactionLogs
-const _fetchStatusFromLogs = (txLogs) => {
-    if (txLogs.length === 0) return false
-    const transferLog = _.get(txLogs[0].eventsByType, "transfer", null)
-    if (!transferLog) return false
-    const transferKeys = ["recipient", "sender", "amount"]
-    return transferKeys.every((key) => transferLog.hasOwnProperty(key) && transferLog[key].length === 1)
+
+    return { ...response, fee, nonce }
 }
 
 module.exports = {
     consoleError,
     getGasPrice,
     _getNetworkDetails,
-    _fetchStatusFromLogs,
     _fetchTrasactionData,
     _fetchFeeFromTx,
     _toCrypto,

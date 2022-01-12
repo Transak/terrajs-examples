@@ -17,6 +17,8 @@ const testData = {
     crypto: "uluna",
     decimals: 6,
     amount: 0.00005,
+    CW20TokenAddress: "terra1747mad58h0w4y589y3sk84r5efqdev9q4r02pc", //ANC testnet
+    CW20Decimals: 6,
 }
 
 if (!testData.mnemonic) throw new Error("Invalid menomics!")
@@ -54,6 +56,7 @@ const keys = {
         { name: "transactionHash" },
         { name: "transactionLink" },
         { name: "status" },
+        { name: "isSuccessful" },
     ],
 }
 const keyTypeObj = {
@@ -71,6 +74,7 @@ const keyTypeObj = {
     transactionHash: "string",
     transactionLink: "string",
     status: "boolean",
+    isSuccessful: "boolean",
 }
 
 const validateTypesAndKeys = (objectToCheck, keysObject) => {
@@ -101,23 +105,25 @@ const isBSONserializable = (res) => {
 describe("terra-mainet module", () => {
     it("should getBalance", async function () {
         this.timeout(mainTimeout * 3)
-        const result = await terraMainLib.getBalance(testData.toWalletAddress, testData.network, "uluna")
+        const resultCW20 = await terraMainLib.getBalance(testData.toWalletAddress, testData.network, "", testData.CW20TokenAddress, testData.decimals)
+        expect(typeof resultCW20 === "number")
+        const result = await terraMainLib.getBalance(testData.toWalletAddress, testData.network, "uusd")
         expect(typeof result === "number")
     })
 
-    it("should isValidWalletAddress", async function () {
+    it.skip("should isValidWalletAddress", async function () {
         this.timeout(mainTimeout * 3)
         const result = await terraMainLib.isValidWalletAddress(testData.toWalletAddress, testData.network)
         expect(result === true)
     })
-    it("should getNonce", async function () {
+    it.skip("should getNonce", async function () {
         this.timeout(mainTimeout * 3)
         const { mnemonic, network } = testData
         const nonce = await terraMainLib.getNonce({ network, mnemonic })
         assert(checkForNumber(nonce), "nonce should be a number type")
     })
 
-    it("should getGasPrice", async function () {
+    it.skip("should getGasPrice", async function () {
         this.timeout(mainTimeout * 3)
         const { mnemonic, network, crypto, amount, decimals } = testData
         const gasPrice = await terraMainLib.getGasPrice({ network })
@@ -125,7 +131,7 @@ describe("terra-mainet module", () => {
         runtime.gasPrice = gasPrice
     })
 
-    it("should sendTransaction", async function () {
+    it.skip("should sendTransaction", async function () {
         this.timeout(mainTimeout * 3)
         const { toWalletAddress: to, mnemonic, network, amount } = testData
         const gasPrice = runtime.gasPrice
@@ -144,7 +150,7 @@ describe("terra-mainet module", () => {
         runtime.transactionHash = result.receipt.transactionHash
     })
 
-    it("should getTransaction", async function () {
+    it.skip("should getTransaction", async function () {
         this.timeout(mainTimeout * 3)
         const { network } = testData
         const result = await terraMainLib.getTransaction(runtime.transactionHash, network)
@@ -152,5 +158,25 @@ describe("terra-mainet module", () => {
         assert(status, "response of getTransaction should be BSON serializable : error : " + (errorMessage || ""))
         let validation_errors = validateTypesAndKeys(result.receipt, keys.getTransaction)
         assert(_.isEmpty(validation_errors), "Error validation keys and types \n" + JSON.stringify(validation_errors))
+    })
+
+    it.skip("should sendTransaction CW20", async function () {
+        this.timeout(mainTimeout * 3)
+        const { toWalletAddress: to, mnemonic, network, amount, CW20TokenAddress, CW20Decimals } = testData
+        const gasPrice = runtime.gasPrice
+        const result = await terraMainLib.sendTransaction({
+            to,
+            amount,
+            network,
+            mnemonic,
+            gasPrice,
+            contractAddress: CW20TokenAddress,
+            decimals: CW20Decimals,
+        })
+        const { status, errorMessage } = isBSONserializable(result)
+        assert(status, "response of sendTransaction should be BSON serializable : error : " + (errorMessage || ""))
+        let validation_errors = validateTypesAndKeys(result.receipt, keys.sendTransaction)
+        assert(_.isEmpty(validation_errors), "Error validation keys and types \n" + JSON.stringify(validation_errors))
+        runtime.transactionHash = result.receipt.transactionHash
     })
 })

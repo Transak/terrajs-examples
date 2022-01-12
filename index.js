@@ -1,4 +1,4 @@
-const { LCDClient, MnemonicKey, MsgSend, isTxError, Coin, Coins } = require("@terra-money/terra.js")
+const { LCDClient, MnemonicKey, MsgSend, isTxError, Coin, MsgExecuteContract } = require("@terra-money/terra.js")
 const { consoleError, getGasPrice, _fetchStatusFromLogs, _fetchTrasactionData, _fetchFeeFromTx, _toCrypto, _toDecimal, _getNetworkDetails } = require("./utils.js")
 
 const validWallet = /terra1[a-z0-9]{38}/g
@@ -18,11 +18,23 @@ const getTransactionLink = (txId, network) => _getNetworkDetails(network).transa
 const getWalletLink = (walletAddress, network) => _getNetworkDetails(network).walletLink(walletAddress)
 
 const _getBalance = (address, network) => getTerra(network).bank.balance(address)
-
-const getBalance = async (address, network, denom) => {
+const _getCW20Balance = ({ walletAddress, contractAddress, network }) => {
+    return getTerra(network).wasm.contractQuery(contractAddress, { balance: { address: walletAddress } })
+    // return fetch(`${_getNetworkDetails(network).provider}/wasm/contract/${contractAddress}/store?query_msg={"balance":{"address":"${walletAddress}"}}`)
+}
+const getBalance = async (address, network, denom, contractAddress = null, decimals = 6) => {
     try {
-        const balances = await _getBalance(address, network)
-        return Number(_toDecimal(balances[0]._coins[denom].amount.toString(), 6))
+        let balanceInDec
+        if (!contractAddress) {
+            const balances = await _getBalance(address, network)
+            console.log(balances)
+            const balance = _.get(balances[0]._coins, denom, {}).amount || 0
+            balanceInDec = Number(_toDecimal(balance.toString(), decimals))
+        } else {
+            const balance = (await _getCW20Balance({ walletAddress: address, contractAddress, network })).balance
+            balanceInDec = balance ? Number(_toDecimal(balance, decimals)) : 0
+        }
+        return balanceInDec
     } catch (err) {
         consoleError({
             message: `some error occured fetching balance for address ${address} on network ${network} for original error look into extra field`,
@@ -41,7 +53,7 @@ const getNonce = async ({ network, mnemonic }) => {
 }
 
 // return Object
-const sendTransaction = async ({ to, amount, network, mnemonic, nonce, denom, gasPrice, decimals = 6 }) => {
+const sendTransaction = async ({ to, amount, network, mnemonic, nonce, denom, gasPrice, contractAddress, decimals = 6 }) => {
     try {
         //Get Provider
         const terra = getTerra(network)
@@ -56,9 +68,22 @@ const sendTransaction = async ({ to, amount, network, mnemonic, nonce, denom, ga
         const wallet = terra.wallet(mk)
 
         // crypto transfer message
-        const send = new MsgSend(wallet.key.accAddress, to, {
-            [denom]: amoutnInCrypto,
-        })
+
+        const send = !contractAddress
+            ? new MsgSend(wallet.key.accAddress, to, {
+                  [denom]: amoutnInCrypto,
+              })
+            : new MsgExecuteContract(
+                  wallet.key.accAddress,
+                  contractAddress, // CW20 token address.
+                  {
+                      transfer: {
+                          amount: amoutnInCrypto,
+                          recipient: wallet.key.accAddress,
+                      },
+                  }
+              )
+
         // sign transaction
         const transaction = await wallet.createAndSignTx({
             msgs: [send],
@@ -96,12 +121,13 @@ const sendTransaction = async ({ to, amount, network, mnemonic, nonce, denom, ga
     }
 }
 
-const getTransaction = async (txId, network) => {
+const getTransaction = async (txId, network, decimals = 6) => {
     try {
         const txInfo = await getTerra(network).tx.txInfo(txId)
-        const status = _fetchStatusFromLogs(txInfo.logs)
+        const status = txInfo.code === 0
+        const isSuccessful = txInfo.code === 0
         const { to, from, value, denom, fee, nonce } = _fetchTrasactionData(txInfo.tx)
-        const gasPrice = Number((Number(_toCrypto(fee, 6).toString()) / txInfo.gas_wanted).toFixed(6))
+        const gasPrice = Number((Number(_toCrypto(fee, decimals).toString()) / txInfo.gas_wanted).toFixed(decimals))
         response = {
             transactionData: txInfo,
             date: new Date(),
@@ -130,6 +156,7 @@ const getTransaction = async (txId, network) => {
                 to,
                 nonce,
                 status,
+                isSuccessful,
                 ...(status ? {} : { error: txInfo.raw_log }),
             },
         }
