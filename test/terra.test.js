@@ -12,6 +12,7 @@ invalid chain id
 const mainTimeout = 14000
 const testData = {
     toWalletAddress: process.env.TOWALLETADDRESS,
+    memo: process.env.MEMO,
     network: process.env.NETWORK,
     mnemonic: process.env.MNEMONIC,
     crypto: "uluna",
@@ -106,12 +107,12 @@ describe("terra-mainet module", () => {
     it("should getBalance", async function () {
         this.timeout(mainTimeout * 3)
         const resultCW20 = await terraMainLib.getBalance(testData.toWalletAddress, testData.network, "", testData.CW20TokenAddress, testData.decimals)
-        expect(typeof resultCW20 === "number")
+        assert(typeof resultCW20 === "number", "balance should be of type number")
         const result = await terraMainLib.getBalance(testData.toWalletAddress, testData.network, "uusd")
-        expect(typeof result === "number")
+        assert(typeof result === "number", "balance should be of type number")
     })
 
-    it.skip("should isValidWalletAddress", async function () {
+    it("should isValidWalletAddress", async function () {
         this.timeout(mainTimeout * 3)
         const result = await terraMainLib.isValidWalletAddress(testData.toWalletAddress, testData.network)
         expect(result === true)
@@ -137,6 +138,7 @@ describe("terra-mainet module", () => {
         const gasPrice = runtime.gasPrice
         const result = await terraMainLib.sendTransaction({
             to,
+            memo: testData.memo,
             amount,
             network,
             mnemonic,
