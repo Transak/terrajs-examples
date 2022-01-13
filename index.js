@@ -53,7 +53,7 @@ const getNonce = async ({ network, mnemonic }) => {
 }
 
 // return Object
-const sendTransaction = async ({ to, amount, network, mnemonic, nonce, denom, gasPrice, contractAddress, decimals = 6 }) => {
+const sendTransaction = async ({ to, memo, amount, network, mnemonic, nonce, denom, gasPrice, contractAddress, decimals = 6 }) => {
     try {
         //Get Provider
         const terra = getTerra(network)
@@ -83,12 +83,12 @@ const sendTransaction = async ({ to, amount, network, mnemonic, nonce, denom, ga
                       },
                   }
               )
-
         // sign transaction
         const transaction = await wallet.createAndSignTx({
             msgs: [send],
             gasPrices: [new Coin("uluna", gasPrice || "0.15")],
             ...(nonce ? { nonce } : {}),
+            ...(memo ? { memo } : {}),
         })
         const sendRes = await terra.tx.broadcast(transaction)
         if (isTxError(sendRes)) {
