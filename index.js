@@ -27,7 +27,6 @@ const getBalance = async (address, network, denom, contractAddress = null, decim
         let balanceInDec
         if (!contractAddress) {
             const balances = await _getBalance(address, network)
-            console.log(balances)
             const balance = _.get(balances[0]._coins, denom, {}).amount || 0
             balanceInDec = Number(_toDecimal(balance.toString(), decimals))
         } else {
