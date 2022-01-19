@@ -6,7 +6,7 @@ const config = require("./config")
 
 const consoleError = ({ message, err, tags }) => {
     const error = new Error(message)
-    error.extra = err.response ? err.response.data : err
+    error.extra = JSON.stringify(err.response ? err.response.data.message : err.message ? err.message : err)
     error.tags = {
         area: "crypto_coverage",
         blockchain: "terra",

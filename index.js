@@ -8,8 +8,6 @@ const getTerra = (network) => {
     return new LCDClient({
         URL: _getNetworkDetails(network).provider,
         chainID: _getNetworkDetails(network).networkName,
-        gasAdjustment: 1.5,
-        gas: 10000000,
     })
 }
 
@@ -91,7 +89,7 @@ const sendTransaction = async ({ to, memo, amount, network, mnemonic, nonce, den
         })
         const sendRes = await terra.tx.broadcast(transaction)
         if (isTxError(sendRes)) {
-            throw new Error(`encountered an error while running the transaction: ${sendRes.code} ${sendRes.codespace}`)
+            throw new Error(`encountered an error while running the transaction: ${sendRes.code} ${sendRes.codespace} message : ${sendRes.raw_log}`)
         }
         return {
             transactionData: sendRes,
