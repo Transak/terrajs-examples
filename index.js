@@ -65,7 +65,6 @@ const sendTransaction = async ({ to, memo, amount, network, mnemonic, nonce, den
         const wallet = terra.wallet(mk)
 
         // crypto transfer message
-
         const send = !contractAddress
             ? new MsgSend(wallet.key.accAddress, to, {
                   [denom]: amoutnInCrypto,
@@ -76,7 +75,7 @@ const sendTransaction = async ({ to, memo, amount, network, mnemonic, nonce, den
                   {
                       transfer: {
                           amount: amoutnInCrypto,
-                          recipient: wallet.key.accAddress,
+                          recipient: to,
                       },
                   }
               )
